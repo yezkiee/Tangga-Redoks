@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tangga Redoks - Game Pembelajaran Kimia</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .board-container {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(11, 1fr);
+            grid-template-rows: repeat(2, 100px);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .cell {
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            position: relative;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .cell:hover {
+            transform: translateY(-5px);
+        }
+        
+        .red {
+            background-color: #ff7675;
+        }
+        
+        .blue {
+            background-color: #74b9ff;
+        }
+        
+        .start, .finish {
+            background-color: #55efc4;
+            font-size: 1.2em;
+        }
+        
+        .player {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 10;
+            transition: all 0.5s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 2px solid white;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .question-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .dice {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            border-radius: 10px;
+            border: 2px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 0 auto 20px auto;
+        }
+        
+        .dice-animation {
+            animation: roll 0.5s ease-in-out;
+        }
+        
+        @keyframes roll {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            25% { transform: rotateX(90deg) rotateY(45deg) rotateZ(45deg); }
+            50% { transform: rotateX(180deg) rotateY(90deg) rotateZ(90deg); }
+            75% { transform: rotateX(270deg) rotateY(135deg) rotateZ(135deg); }
+            100% { transform: rotateX(360deg) rotateY(180deg) rotateZ(180deg); }
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .status-message {
+            font-size: 18px;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
+        
+        .answer-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .answer-option {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .answer-option:hover {
+            background-color: #f0f0f0;
+        }
+        
+        #gameLog {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tangga Redoks</h1>
+    
+    <div class="game-container">
+        <div class="game-info">
+            <div>
+                <p><strong>Posisi Pemain:</strong> <span id="playerPosition">START</span></p>
+            </div>
+            <div class="dice" id="dice">1</div>
+            <div>
+                <button id="rollDice">Lempar Dadu</button>
+                <button id="newGame">Game Baru</button>
+            </div>
+        </div>
+        
+        <div class="board-container" id="gameBoard">
+            <!-- Board will be generated by JavaScript -->
+        </div>
+        
+        <div class="status-message" id="statusMessage">
+            Selamat datang di Tangga Redoks! Klik "Lempar Dadu" untuk memulai permainan.
+        </div>
+        
+        <div id="gameLog">
+            <p>Log Permainan:</p>
+        </div>
+    </div>
+    
+    <div class="question-modal" id="questionModal">
+        <div class="modal-content">
+            <h2 id="questionTitle">Pertanyaan</h2>
+            <p id="questionText"></p>
+            <div class="answer-options" id="answerOptions">
+                <!-- Answer options will be generated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game variables
+            const totalCells = 22; // START + 20 cells + FINISH
+            const boardSize = 22;
+            const player = {
+                position: 0, // 0 = START, 21 = FINISH
+                element: null
+            };
+            
+            let currentDiceRoll = 0;
+            let gameActive = true;
+            
+            // DOM elements
+            const gameBoard = document.getElementById('gameBoard');
+            const rollDiceBtn = document.getElementById('rollDice');
+            const newGameBtn = document.getElementById('newGame');
+            const diceElement = document.getElementById('dice');
+            const statusMessage = document.getElementById('statusMessage');
+            const questionModal = document.getElementById('questionModal');
+            const playerPositionDisplay = document.getElementById('playerPosition');
+            const gameLog = document.getElementById('gameLog');
+            
+            // Question bank
+            const questions = {
+                red: [ // Soal identifikasi bilangan oksidasi
+                    {
+                        question: "Tentukan bilangan oksidasi Cl dalam senyawa KClO₃.",
+                        options: ["+5", "+3", "+7", "+1"],
+                        answer: "+5",
+                        explanation: "Dalam KClO₃, bilangan oksidasi K adalah +1, O adalah -2. Jadi: 1 + x + 3(-2) = 0, maka x = +5"
+                    },
+                    {
+                        question: "Manakah yang merupakan reduktor dalam reaksi: Zn(s) + Cu²⁺(aq) → Zn²⁺(aq) + Cu(s)?",
+                        options: ["Zn", "Cu²⁺", "Zn²⁺", "Cu"],
+                        answer: "Zn",
+                        explanation: "Zn mengalami oksidasi dari Zn(0) menjadi Zn²⁺(+2), sehingga Zn bertindak sebagai reduktor."
+                    },
+                    {
+                        question: "Tentukan bilangan oksidasi Mn dalam senyawa KMnO₄.",
+                        options: ["+7", "+4", "+2", "+6"],
+                        answer: "+7",
+                        explanation: "Dalam KMnO₄, bilangan oksidasi K adalah +1, O adalah -2. Jadi: 1 + x + 4(-2) = 0, maka x = +7"
+                    },
+                    {
+                        question: "Pada reaksi Fe²⁺ + Cr₂O₇²⁻ → Fe³⁺ + Cr³⁺, manakah yang menjadi oksidator?",
+                        options: ["Cr₂O₇²⁻", "Fe²⁺", "Fe³⁺", "Cr³⁺"],
+                        answer: "Cr₂O₇²⁻",
+                        explanation: "Cr₂O₇²⁻ mengalami reduksi dari Cr(+6) menjadi Cr³⁺(+3), sehingga Cr₂O₇²⁻ bertindak sebagai oksidator."
+                    },
+                    {
+                        question: "Tentukan bilangan oksidasi S dalam senyawa H₂SO₄.",
+                        options: ["+6", "+4", "+2", "+8"],
+                        answer: "+6",
+                        explanation: "Dalam H₂SO₄, bilangan oksidasi H adalah +1, O adalah -2. Jadi: 2(+1) + x + 4(-2) = 0, maka x = +6"
+                    }
+                ],
+                blue: [ // Soal menyetarakan reaksi redoks
+                    {
+                        question: "Setarakan reaksi redoks berikut dalam suasana asam: \nMnO₄⁻ + Fe²⁺ → Mn²⁺ + Fe³⁺",
+                        options: [
+                            "MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O",
+                            "2MnO₄⁻ + 5Fe²⁺ + 16H⁺ → 2Mn²⁺ + 5Fe³⁺ + 8H₂O",
+                            "MnO₄⁻ + 8Fe²⁺ + 8H⁺ → Mn²⁺ + 8Fe³⁺ + 4H₂O",
+                            "3MnO₄⁻ + 5Fe²⁺ + 24H⁺ → 3Mn²⁺ + 5Fe³⁺ + 12H₂O"
+                        ],
+                        answer: "MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O",
+                        explanation: "Reaksi setara karena jumlah elektron yang dilepas oleh Fe²⁺ (5 atom × 1e⁻) sama dengan jumlah elektron yang diterima oleh MnO₄⁻ (5e⁻)."
+                    },
+                    {
+                        question: "Setarakan reaksi redoks berikut dalam suasana basa: \nMnO₄⁻ + SO₃²⁻ → MnO₂ + SO₄²⁻",
+                        options: [
+                            "2MnO₄⁻ + 3SO₃²⁻ + H₂O → 2MnO₂ + 3SO₄²⁻ + 2OH⁻",
+                            "MnO₄⁻ + SO₃²⁻ + H₂O → MnO₂ + SO₄²⁻ + 2OH⁻",
+                            "3MnO₄⁻ + 2SO₃²⁻ + H₂O → 3MnO₂ + 2SO₄²⁻ + 2OH⁻",
+                            "MnO₄⁻ + 3SO₃²⁻ + 2OH⁻ → MnO₂ + 3SO₄²⁻ + H₂O"
+                        ],
+                        answer: "MnO₄⁻ + SO₃²⁻ + H₂O → MnO₂ + SO₄²⁻ + 2OH⁻",
+                        explanation: "Mn berkurang dari +7 menjadi +4 (3e⁻) dan S meningkat dari +4 menjadi +6 (2e⁻). Dengan setarakan elektron, muatan dan atom, reaksi ini menjadi seimbang."
+                    },
+                    {
+                        question: "Setarakan reaksi redoks berikut dalam suasana asam: \nCr₂O₇²⁻ + Fe²⁺ → Cr³⁺ + Fe³⁺",
+                        options: [
+                            "Cr₂O₇²⁻ + 6Fe²⁺ + 14H⁺ → 2Cr³⁺ + 6Fe³⁺ + 7H₂O",
+                            "Cr₂O₇²⁻ + 3Fe²⁺ + 14H⁺ → 2Cr³⁺ + 3Fe³⁺ + 7H₂O",
+                            "2Cr₂O₇²⁻ + 6Fe²⁺ + 28H⁺ → 4Cr³⁺ + 6Fe³⁺ + 14H₂O",
+                            "Cr₂O₇²⁻ + 2Fe²⁺ + 14H⁺ → 2Cr³⁺ + 2Fe³⁺ + 7H₂O"
+                        ],
+                        answer: "Cr₂O₇²⁻ + 6Fe²⁺ + 14H⁺ → 2Cr³⁺ + 6Fe³⁺ + 7H₂O",
+                        explanation: "Setiap Cr berkurang dari +6 menjadi +3 (3e⁻), sehingga total 6e⁻ untuk Cr₂O₇²⁻. Fe²⁺ melepas 1e⁻ menjadi Fe³⁺, jadi dibutuhkan 6 atom Fe²⁺."
+                    },
+                    {
+                        question: "Setarakan reaksi redoks berikut dalam suasana asam: \nMnO₂ + Cl⁻ → Mn²⁺ + Cl₂",
+                        options: [
+                            "MnO₂ + 2Cl⁻ + 4H⁺ → Mn²⁺ + Cl₂ + 2H₂O",
+                            "MnO₂ + 4Cl⁻ + 4H⁺ → Mn²⁺ + 2Cl₂ + 2H₂O",
+                            "2MnO₂ + 2Cl⁻ + 8H⁺ → 2Mn²⁺ + Cl₂ + 4H₂O",
+                            "MnO₂ + 8Cl⁻ + 8H⁺ → Mn²⁺ + 4Cl₂ + 4H₂O"
+                        ],
+                        answer: "MnO₂ + 2Cl⁻ + 4H⁺ → Mn²⁺ + Cl₂ + 2H₂O",
+                        explanation: "Mn berkurang dari +4 menjadi +2 (2e⁻) dan setiap Cl⁻ melepas 1e⁻ untuk membentuk Cl₂, jadi dibutuhkan 2 ion Cl⁻."
+                    },
+                    {
+                        question: "Setarakan reaksi redoks berikut dalam suasana basa: \nClO⁻ + Cr(OH)₃ → Cl⁻ + CrO₄²⁻",
+                        options: [
+                            "3ClO⁻ + 2Cr(OH)₃ + 4OH⁻ → 3Cl⁻ + 2CrO₄²⁻ + 5H₂O",
+                            "2ClO⁻ + Cr(OH)₃ + OH⁻ → 2Cl⁻ + CrO₄²⁻ + 2H₂O",
+                            "ClO⁻ + Cr(OH)₃ + 2OH⁻ → Cl⁻ + CrO₄²⁻ + 3H₂O",
+                            "3ClO⁻ + Cr(OH)₃ + 3OH⁻ → 3Cl⁻ + CrO₄²⁻ + 3H₂O"
+                        ],
+                        answer: "3ClO⁻ + 2Cr(OH)₃ + 4OH⁻ → 3Cl⁻ + 2CrO₄²⁻ + 5H₂O",
+                        explanation: "Cl berkurang dari +1 menjadi -1 (2e⁻), sedangkan Cr meningkat dari +3 menjadi +6 (3e⁻). Untuk menyetarakan elektron: 3 × ClO⁻ dan 2 × Cr(OH)₃."
+                    }
+                ],
+                // Kartu spesial
+                special: [
+                    { effect: "Maju 3 kotak", move: 3 },
+                    { effect: "Mundur 3 kotak", move: -3 }
+                ]
+            };
+            
+            // Initialize game
+            function initGame() {
+                createBoard();
+                createPlayer();
+                updatePlayerPosition(0);
+                gameActive = true;
+                logMessage("Game baru dimulai! Pemain berada di posisi START.");
+            }
+            
+            // Create game board
+            function createBoard() {
+                gameBoard.innerHTML = '';
+                
+                // Create START cell
+                const startCell = document.createElement('div');
+                startCell.className = 'cell start';
+                startCell.textContent = 'START';
+                startCell.dataset.index = '0';
+                gameBoard.appendChild(startCell);
+                
+                // Create numbered cells
+                for (let i = 1; i <= 20; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${i % 2 === 1 ? 'red' : 'blue'}`;
+                    cell.textContent = i;
+                    cell.dataset.index = i.toString();
+                    gameBoard.appendChild(cell);
+                }
+                
+                // Create FINISH cell
+                const finishCell = document.createElement('div');
+                finishCell.className = 'cell finish';
+                finishCell.textContent = 'FINISH';
+                finishCell.dataset.index = '21';
+                gameBoard.appendChild(finishCell);
+            }
+            
+            // Create player pion
+            function createPlayer() {
+                if (player.element) {
+                    player.element.remove();
+                }
+                
+                player.position = 0;
+                player.element = document.createElement('div');
+                player.element.className = 'player';
+                player.element.style.backgroundColor = '#e74c3c';
+                
+                const startCell = document.querySelector('.cell[data-index="0"]');
+                startCell.appendChild(player.element);
+                
+                // Center the player in the cell
+                const cellRect = startCell.getBoundingClientRect();
+                player.element.style.left = `${(cellRect.width - 25) / 2}px`;
+                player.element.style.top = `${(cellRect.height - 25) / 2}px`;
+            }
+            
+            // Roll dice
+            function rollDice() {
+                if (!gameActive) return;
+                
+                rollDiceBtn.disabled = true;
+                diceElement.classList.add('dice-animation');
+                
+                // Simulate dice rolling animation
+                let rollCount = 0;
+                const maxRolls = 10;
+                const rollInterval = setInterval(() => {
+                    const randomNumber = Math.floor(Math.random() * 6) + 1;
+                    diceElement.textContent = randomNumber;
+                    
+                    rollCount++;
+                    if (rollCount >= maxRolls) {
+                        clearInterval(rollInterval);
+                        diceElement.classList.remove('dice-animation');
+                        currentDiceRoll = parseInt(diceElement.textContent);
+                        logMessage(`Dadu menunjukkan angka ${currentDiceRoll}.`);
+                        movePlayer(currentDiceRoll);
+                    }
+                }, 100);
+            }
+            
+            // Move player
+            function movePlayer(steps) {
+                const newPosition = Math.min(player.position + steps, boardSize - 1);
+                updatePlayerPosition(newPosition);
+
+                if (newPosition === boardSize - 1) {
+                    // Player reached FINISH
+                    gameWon();
+                } else {
+                    // Check cell type and show question
+                    setTimeout(() => {
+                        checkCellType(newPosition);
+                    }, 600);
+                }
+            }
+            
+            // Update player position on board
+            function updatePlayerPosition(newPosition) {
+                player.position = newPosition;
+                const cell = document.querySelector(`.cell[data-index="${newPosition}"]`);
+                
+                if (cell && player.element) {
+                    cell.appendChild(player.element);
+                    
+                    // Center the player in the cell
+                    const cellRect = cell.getBoundingClientRect();
+                    player.element.style.left = `${(cellRect.width - 25) / 2}px`;
+                    player.element.style.top = `${(cellRect.height - 25) / 2}px`;
+                    
+                    // Update position display
+                    if (newPosition === 0) {
+                        playerPositionDisplay.textContent = "START";
+                    } else if (newPosition === boardSize - 1) {
+                        playerPositionDisplay.textContent = "FINISH";
+                    } else {
+                        playerPositionDisplay.textContent = newPosition;
+                    }
+                }
+            }
+            
+            // Check cell type and show appropriate question or special effect
+            function checkCellType(position) {
+                if (position === 0 || position === boardSize - 1) {
+                    // START or FINISH
+                    rollDiceBtn.disabled = false;
+                    return;
+                }
+                
+                const cell = document.querySelector(`.cell[data-index="${position}"]`);
+                
+                if (cell.classList.contains('red')) {
+                    showQuestion('red');
+                } else if (cell.classList.contains('blue')) {
+                    showQuestion('blue');
+                }
+                
+                // Random chance for special card (10%)
+                const specialChance = Math.random();
+                if (specialChance < 0.1) {
+                    applySpecialCard();
+                }
+            }
+            
+            // Show question based on cell type
+            function showQuestion(type) {
+                const questionBank = questions[type];
+                const randomIndex = Math.floor(Math.random() * questionBank.length);
+                const question = questionBank[randomIndex];
+                
+                document.getElementById('questionTitle').textContent = type === 'red' ? 
+                    "Pertanyaan: Identifikasi Bilangan Oksidasi" : 
+                    "Pertanyaan: Setarakan Reaksi Redoks";
+                
+                document.getElementById('questionText').textContent = question.question;
+                
+                const answerOptions = document.getElementById('answerOptions');
+                answerOptions.innerHTML = '';
+                
+                // Create answer options
+                question.options.forEach(option => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'answer-option';
+                    optionElement.textContent = option;
+                    
+                    optionElement.addEventListener('click', () => {
+                        handleAnswer(option === question.answer, question.explanation);
+                    });
+                    
+                    answerOptions.appendChild(optionElement);
+                });
+                
+                questionModal.style.display = 'flex';
+                logMessage(`Pemain mendapat pertanyaan ${type === 'red' ? 'identifikasi bilangan oksidasi' : 'setarakan reaksi redoks'}.`);
+            }
+            
+            // Handle answer
+            function handleAnswer(isCorrect, explanation) {
+                questionModal.style.display = 'none';
+                
+                if (isCorrect) {
+                    statusMessage.textContent = "Jawaban benar! " + explanation;
+                    logMessage("Jawaban benar! Pemain tetap di posisi.");
+                } else {
+                    statusMessage.textContent = "Jawaban salah! " + explanation + " Mundur 2 langkah.";
+                    logMessage("Jawaban salah! Pemain mundur 2 langkah.");
+                    
+                    // Move player back 2 steps if answer is wrong
+                    setTimeout(() => {
+                        const newPosition = Math.max(0, player.position - 2);
+                        updatePlayerPosition(newPosition);
+                    }, 1000);
+                }
+                
+                setTimeout(() => {
+                    rollDiceBtn.disabled = false;
+                }, 1500);
+            }
+            
+            // Apply special card
+            function applySpecialCard() {
+                const randomIndex = Math.floor(Math.random() * questions.special.length);
+                const specialCard = questions.special[randomIndex];
+                
+                statusMessage.textContent = `Kartu Spesial: ${specialCard.effect}!`;
+                logMessage(`Pemain mendapat kartu spesial: ${specialCard.effect}`);
+                
+                setTimeout(() => {
+                    const newPosition = Math.max(0, Math.min(boardSize - 1, player.position + specialCard.move));
+                    updatePlayerPosition(newPosition);
+                    
+                    if (newPosition === boardSize - 1) {
+                        gameWon();
+                    }
+                }, 1000);
+            }
+            
+            // Game won
+            function gameWon() {
+                statusMessage.textContent = "Selamat! Anda telah mencapai FINISH dan memenangkan permainan!";
+                logMessage("Permainan berakhir! Pemain mencapai FINISH dan memenangkan permainan.");
+                gameActive = false;
+                rollDiceBtn.disabled = true;
+            }
+            
+            // Add log message
+            function logMessage(message) {
+                const logEntry = document.createElement('p');
+                logEntry.textContent = message;
+                gameLog.appendChild(logEntry);
+                gameLog.scrollTop = gameLog.scrollHeight;
+            }
+            
+            // Event listeners
+            rollDiceBtn.addEventListener('click', rollDice);
+            newGameBtn.addEventListener('click', () => {
+                initGame();
+                rollDiceBtn.disabled = false;
+                statusMessage.textContent = "Game baru dimulai! Klik 'Lempar Dadu' untuk memulai.";
+            });
+            
+            // Initialize the game
+            initGame();
+        });
+    </script>
+</body>
+</html>
